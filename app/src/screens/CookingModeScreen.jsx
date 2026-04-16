@@ -4,13 +4,12 @@ import {
   ScrollView, Animated, Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
 import { sessionApi, ingredientApi } from '../services/supabase';
 import {
   requestPermissions,
   scheduleTimerNotification,
-  sendPhotoPromptNotification,
   sendNextStepNotification,
+  sendIngredientsReadyNotification,
   cancelNotification,
   cancelAllNotifications,
 } from '../services/notifications';
@@ -27,7 +26,6 @@ export default function CookingModeScreen() {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerNotifId, setTimerNotifId] = useState(null);
-  const [stepPhotos, setStepPhotos] = useState({});
   const [completed, setCompleted] = useState(false);
 
   const timerRef = useRef(null);
@@ -47,6 +45,9 @@ export default function CookingModeScreen() {
 
       const ingredientIds = (recipe.ingredients || []).map(i => i.id);
       await ingredientApi.initChecks(session.id, ingredientIds);
+
+      // 재료 준비 완료 — 시작 전 사진 찍으라고 알림
+      await sendIngredientsReadyNotification(recipe.name);
     })();
 
     return () => {
@@ -86,9 +87,7 @@ export default function CookingModeScreen() {
   }, [currentStepIdx]);
 
   const handleTimerComplete = useCallback(async () => {
-    if (currentStep?.is_photo_moment) {
-      await sendPhotoPromptNotification(currentStep.title, currentStep.step_number);
-    }
+    // 타이머 완료 시 — 알림은 scheduleTimerNotification에서 이미 처리됨
   }, [currentStep]);
 
   const startTimer = useCallback(async () => {
@@ -116,46 +115,6 @@ export default function CookingModeScreen() {
     }
   }, [timerNotifId]);
 
-  const takePhoto = useCallback(async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다. 설정에서 허용해주세요.');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
-        quality: 0.8,
-        allowsEditing: true,
-        aspect: [4, 3],
-      });
-
-      if (!result.canceled && result.assets?.[0]) {
-        const uri = result.assets[0].uri;
-        setStepPhotos(prev => ({ ...prev, [currentStep.step_number]: uri }));
-
-        if (sessionId) {
-          try {
-            await sessionApi.uploadPhoto(sessionId, currentStep.id, currentStep.step_number, uri);
-          } catch (err) {
-            console.error('[Camera] 업로드 실패:', err.message);
-            Alert.alert(
-              '업로드 실패',
-              '사진을 저장하지 못했습니다. 네트워크를 확인하거나 다시 찍어주세요.',
-              [{ text: '확인' }]
-            );
-            // 로컬 미리보기는 유지하되 실패 표시
-            setStepPhotos(prev => ({ ...prev, [currentStep.step_number]: null }));
-          }
-        }
-      }
-    } catch (err) {
-      console.error('[Camera] 오류:', err.message);
-      Alert.alert('오류', '카메라를 열 수 없습니다: ' + err.message);
-    }
-  }, [currentStep, sessionId]);
-
   const goNextStep = useCallback(async () => {
     await stopTimer();
 
@@ -169,7 +128,8 @@ export default function CookingModeScreen() {
     const nextStep = steps[nextIdx];
     setCurrentStepIdx(nextIdx);
 
-    await sendNextStepNotification(nextStep.step_number, nextStep.title);
+    // 매 단계마다 사진 유도 알림 (is_photo_moment 여부 전달)
+    await sendNextStepNotification(nextStep.step_number, nextStep.title, nextStep.is_photo_moment);
 
     if (sessionId) await sessionApi.updateStep(sessionId, nextStep.step_number);
 
@@ -297,14 +257,6 @@ export default function CookingModeScreen() {
           </View>
         )}
 
-        {/* 사진 촬영 */}
-        {currentStep.is_photo_moment && (
-          <TouchableOpacity style={styles.photoBtn} onPress={takePhoto}>
-            <Text style={styles.photoBtnText}>
-              {stepPhotos[currentStep.step_number] ? '사진 완료 (다시 찍기)' : '지금 사진 찍기'}
-            </Text>
-          </TouchableOpacity>
-        )}
       </ScrollView>
 
       {/* 다음 단계 버튼 */}
@@ -403,16 +355,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   timerStopBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  photoBtn: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#d8d8d8',
-    borderStyle: 'dashed',
-  },
-  photoBtnText: { color: '#555', fontSize: 15, fontWeight: '600' },
   footer: { padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#efefef' },
   nextPreview: { fontSize: 11, color: '#aaa', marginBottom: 8, textAlign: 'center', letterSpacing: 0.3 },
   nextBtn: { backgroundColor: '#1a1a1a', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },

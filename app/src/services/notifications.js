@@ -1,7 +1,7 @@
 /**
  * 푸시 알림 서비스
  * - 타이머 기반 요리 단계 알림
- * - 사진 촬영 유도 알림
+ * - 사진 촬영 유도 알림 (서버 저장 없이 알림만)
  */
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -51,17 +51,30 @@ export async function requestPermissions() {
 }
 
 /**
- * 타이머 완료 알림 예약
- * @param {number} durationMinutes - 타이머 분
- * @param {string} stepTitle - 단계 이름
- * @param {string} stepDescription - 단계 설명
- * @returns {Promise<string>} 알림 ID
+ * 재료 준비 완료 알림 (요리 시작 시)
+ * 재료를 펼쳐두고 사진 찍으라고 유도
  */
-export async function scheduleTimerNotification(durationMinutes, stepTitle, stepDescription) {
+export async function sendIngredientsReadyNotification(recipeName) {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '재료 준비 완료!',
+      body: `${recipeName} 재료를 예쁘게 펼쳐두고 사진 찍어두세요 📸`,
+      sound: 'default',
+      ...(Platform.OS === 'android' && { channelId: 'photo-prompt' }),
+      data: { type: 'ingredients_ready' },
+    },
+    trigger: null,
+  });
+}
+
+/**
+ * 타이머 완료 알림 예약
+ */
+export async function scheduleTimerNotification(durationMinutes, stepTitle, nextStepTitle) {
   const id = await Notifications.scheduleNotificationAsync({
     content: {
       title: `⏰ ${stepTitle} 완료!`,
-      body: `다음 단계로 넘어갈 시간이에요.\n${stepDescription}`,
+      body: `다음: ${nextStepTitle} — 지금 모습 사진 찍어두세요 📸`,
       sound: 'default',
       ...(Platform.OS === 'android' && { channelId: 'cooking-timer' }),
       data: { type: 'timer_complete' },
@@ -75,35 +88,22 @@ export async function scheduleTimerNotification(durationMinutes, stepTitle, step
 }
 
 /**
- * 사진 촬영 유도 알림
- * @param {string} stepTitle - 단계 이름
- * @param {number} stepNumber - 단계 번호
- * @returns {Promise<string>} 알림 ID
- */
-export async function sendPhotoPromptNotification(stepTitle, stepNumber) {
-  const id = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: `📸 지금 찍어두세요!`,
-      body: `${stepTitle} 완성 모습을 기록해보세요.`,
-      sound: 'default',
-      data: { type: 'photo_prompt', stepNumber },
-    },
-    trigger: null, // 즉시 발송
-  });
-  return id;
-}
-
-/**
- * 다음 단계 시작 안내 알림
+ * 다음 단계 시작 알림 (매 단계마다 사진 유도 포함)
  * @param {number} stepNumber
  * @param {string} stepTitle
+ * @param {boolean} isPhotoMoment - 촬영 포인트 여부
  */
-export async function sendNextStepNotification(stepNumber, stepTitle) {
+export async function sendNextStepNotification(stepNumber, stepTitle, isPhotoMoment = false) {
+  const body = isPhotoMoment
+    ? `${stepTitle} — 사진 찍기 좋은 순간이에요! 📸`
+    : `${stepTitle} — 중간 과정 사진 남겨두세요 📸`;
+
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: `👨‍🍳 ${stepNumber}단계 시작`,
-      body: stepTitle,
+      title: `STEP ${stepNumber}`,
+      body,
       sound: 'default',
+      ...(Platform.OS === 'android' && { channelId: 'photo-prompt' }),
       data: { type: 'next_step', stepNumber },
     },
     trigger: null,
@@ -112,7 +112,6 @@ export async function sendNextStepNotification(stepNumber, stepTitle) {
 
 /**
  * 예약된 알림 취소
- * @param {string} notificationId
  */
 export async function cancelNotification(notificationId) {
   await Notifications.cancelScheduledNotificationAsync(notificationId);
@@ -127,9 +126,6 @@ export async function cancelAllNotifications() {
 
 /**
  * 알림 수신 리스너 등록
- * @param {Function} onReceive - 알림 수신 콜백
- * @param {Function} onResponse - 알림 탭 콜백
- * @returns {Function} 리스너 해제 함수
  */
 export function addNotificationListeners(onReceive, onResponse) {
   const receiveListener = Notifications.addNotificationReceivedListener(onReceive);

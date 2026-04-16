@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Image, ActivityIndicator, Share, Alert,
+  ActivityIndicator, Share, Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { sessionApi } from '../services/supabase';
@@ -13,7 +13,6 @@ export default function CookingJournalScreen() {
   const route = useRoute();
   const { sessionId, recipe } = route.params;
 
-  const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [snsPost, setSnsPost] = useState(null);
@@ -25,16 +24,14 @@ export default function CookingJournalScreen() {
   const postSectionRef = useRef(null);
 
   useEffect(() => {
-    Promise.all([
-      sessionApi.getPhotos(sessionId),
-      sessionApi.getSession(sessionId),
-    ]).then(([photos, session]) => {
-      setPhotos(photos);
-      if (session?.sns_post) {
-        setSnsPost(session.sns_post);
-        setIsSaved(true);
-      }
-    }).finally(() => setLoading(false));
+    sessionApi.getSession(sessionId)
+      .then(session => {
+        if (session?.sns_post) {
+          setSnsPost(session.sns_post);
+          setIsSaved(true);
+        }
+      })
+      .finally(() => setLoading(false));
   }, [sessionId]);
 
   const generateSnsPost = async () => {
@@ -132,28 +129,11 @@ export default function CookingJournalScreen() {
           <Text style={styles.headerTitle}>{recipe.name}</Text>
         </View>
 
-        {/* 사진 타임라인 */}
-        {photos.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>촬영 기록</Text>
-            {photos.map(photo => (
-              <View key={photo.id} style={styles.photoCard}>
-                <View style={styles.photoStepBadge}>
-                  <Text style={styles.photoStepText}>STEP {photo.step_number}</Text>
-                </View>
-                <Image source={{ uri: photo.photo_url }} style={styles.photo} />
-                {photo.caption && (
-                  <Text style={styles.photoCaption}>{photo.caption}</Text>
-                )}
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.noPhotoBox}>
-            <Text style={styles.noPhotoText}>촬영된 사진이 없습니다</Text>
-            <Text style={styles.noPhotoSub}>다음엔 요리 과정을 사진으로 남겨보세요</Text>
-          </View>
-        )}
+        {/* 사진 안내 */}
+        <View style={styles.noPhotoBox}>
+          <Text style={styles.noPhotoText}>사진은 기기 갤러리에 저장됩니다</Text>
+          <Text style={styles.noPhotoSub}>요리 중 알림을 받으면 카메라 앱으로 찍어두세요</Text>
+        </View>
 
         {/* SNS 게시글 생성 */}
         <View ref={postSectionRef} style={styles.section}>
