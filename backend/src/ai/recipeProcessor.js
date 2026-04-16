@@ -248,14 +248,18 @@ async function generateSnsPost(recipe, session, photos) {
         content: `다음 요리 기록을 SNS 게시글로 작성해주세요.
 
 레시피: ${recipe.name}
+유행 이유: ${recipe.reason || '없음'}
+난이도: ${recipe.difficulty || '보통'}
+소요 시간: ${recipe.total_time_minutes || 0}분
+주요 재료: ${(recipe.ingredients || []).slice(0, 5).map(i => i.name).join(', ') || '없음'}
 메모: ${session.notes || '없음'}
 
 JSON 형식으로만 응답:
 {
   "blog_title": "제목",
-  "blog_content": "본문 (500자 내외)",
+  "blog_content": "본문 (500자 내외, 레시피 특징 포함)",
   "instagram_caption": "인스타 캡션 (150자 내외, 이모지 포함)",
-  "hashtags": ["태그1", "태그2", "태그3"],
+  "hashtags": ["태그1", "태그2", "태그3", "태그4", "태그5"],
   "summary": "한 줄 요약"
 }`,
       },
