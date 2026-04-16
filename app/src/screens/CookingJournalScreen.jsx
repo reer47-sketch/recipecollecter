@@ -17,6 +17,8 @@ export default function CookingJournalScreen() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [snsPost, setSnsPost] = useState(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [activePostTab, setActivePostTab] = useState('instagram');
 
   const scrollViewRef = useRef(null);
@@ -28,7 +30,10 @@ export default function CookingJournalScreen() {
       sessionApi.getSession(sessionId),
     ]).then(([photos, session]) => {
       setPhotos(photos);
-      if (session?.sns_post) setSnsPost(session.sns_post);
+      if (session?.sns_post) {
+        setSnsPost(session.sns_post);
+        setIsSaved(true);
+      }
     }).finally(() => setLoading(false));
   }, [sessionId]);
 
@@ -52,6 +57,7 @@ export default function CookingJournalScreen() {
         return;
       }
       setSnsPost(data);
+      setIsSaved(false);
       setTimeout(() => {
         postSectionRef.current?.measureLayout(
           scrollViewRef.current,
@@ -68,6 +74,35 @@ export default function CookingJournalScreen() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const savePost = async () => {
+    setSaving(true);
+    try {
+      await sessionApi.saveSnsPost(sessionId, snsPost);
+      setIsSaved(true);
+    } catch (err) {
+      Alert.alert('오류', '저장에 실패했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deletePost = () => {
+    Alert.alert('게시글 삭제', '저장된 게시글을 삭제하시겠어요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제', style: 'destructive', onPress: async () => {
+          try {
+            await sessionApi.deleteSnsPost(sessionId);
+            setSnsPost(null);
+            setIsSaved(false);
+          } catch {
+            Alert.alert('오류', '삭제에 실패했습니다.');
+          }
+        },
+      },
+    ]);
   };
 
   const sharePost = async () => {
@@ -185,13 +220,28 @@ export default function CookingJournalScreen() {
                 <Text style={styles.shareBtnText}>게시글 공유</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.regenerateBtn}
-                onPress={generateSnsPost}
-                disabled={generating}
-              >
-                <Text style={styles.regenerateBtnText}>다시 작성</Text>
-              </TouchableOpacity>
+              <View style={styles.postActions}>
+                {isSaved ? (
+                  <TouchableOpacity style={styles.savedIndicator} onPress={deletePost}>
+                    <Text style={styles.savedText}>저장됨  삭제</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.saveBtn}
+                    onPress={savePost}
+                    disabled={saving}
+                  >
+                    <Text style={styles.saveBtnText}>{saving ? '저장 중...' : '저장'}</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.regenerateBtn}
+                  onPress={generateSnsPost}
+                  disabled={generating}
+                >
+                  <Text style={styles.regenerateBtnText}>다시 작성</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>
@@ -296,7 +346,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   shareBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  regenerateBtn: { paddingVertical: 10, alignItems: 'center' },
+  postActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  saveBtn: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: '#f0f0f0', borderRadius: 8 },
+  saveBtnText: { fontSize: 13, color: '#1a1a1a', fontWeight: '600' },
+  savedIndicator: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: '#e8f5e9', borderRadius: 8 },
+  savedText: { fontSize: 13, color: '#2e7d32', fontWeight: '600' },
+  regenerateBtn: { paddingVertical: 10, paddingHorizontal: 16 },
   regenerateBtnText: { color: '#aaa', fontSize: 13 },
   footer: {
     padding: 16,

@@ -156,6 +156,24 @@ export const sessionApi = {
     return data;
   },
 
+  /** SNS 게시글 저장 */
+  async saveSnsPost(sessionId, post) {
+    const { error } = await supabase
+      .from('cooking_sessions')
+      .update({ sns_post: post })
+      .eq('id', sessionId);
+    if (error) throw error;
+  },
+
+  /** SNS 게시글 삭제 */
+  async deleteSnsPost(sessionId) {
+    const { error } = await supabase
+      .from('cooking_sessions')
+      .update({ sns_post: null })
+      .eq('id', sessionId);
+    if (error) throw error;
+  },
+
   /** 세션의 전체 사진 조회 */
   async getPhotos(sessionId) {
     const { data, error } = await supabase
