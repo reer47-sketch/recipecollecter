@@ -145,6 +145,17 @@ export const sessionApi = {
     return data;
   },
 
+  /** 세션 조회 (저장된 sns_post 포함) */
+  async getSession(sessionId) {
+    const { data, error } = await supabase
+      .from('cooking_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   /** 세션의 전체 사진 조회 */
   async getPhotos(sessionId) {
     const { data, error } = await supabase

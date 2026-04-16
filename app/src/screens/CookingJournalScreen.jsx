@@ -6,7 +6,19 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { sessionApi } from '../services/supabase';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+// 블로그 본문을 N개 청크로 균등 분할
+function splitIntoParts(text, n) {
+  if (!text || n <= 1) return [text];
+  const sentences = text.split(/(?<=[.!?。\n])\s+/);
+  const chunkSize = Math.ceil(sentences.length / n);
+  const parts = [];
+  for (let i = 0; i < n; i++) {
+    parts.push(sentences.slice(i * chunkSize, (i + 1) * chunkSize).join(' '));
+  }
+  return parts.filter(Boolean);
+}
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://recipecollecter-production.up.railway.app';
 
 export default function CookingJournalScreen() {
   const navigation = useNavigation();
@@ -23,23 +35,35 @@ export default function CookingJournalScreen() {
   const postSectionRef = useRef(null);
 
   useEffect(() => {
-    sessionApi.getPhotos(sessionId)
-      .then(setPhotos)
-      .finally(() => setLoading(false));
+    Promise.all([
+      sessionApi.getPhotos(sessionId),
+      sessionApi.getSession(sessionId),
+    ]).then(([photos, session]) => {
+      setPhotos(photos);
+      if (session?.sns_post) setSnsPost(session.sns_post);
+    }).finally(() => setLoading(false));
   }, [sessionId]);
 
   const generateSnsPost = async () => {
     setGenerating(true);
+    setSnsPost(null);
     try {
+      const controller = new AbortController();
+      const fetchTimeout = setTimeout(() => controller.abort(), 55000);
+
       const response = await fetch(`${BACKEND_URL}/api/generate-post`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, recipeId: recipe.id }),
+        signal: controller.signal,
       });
+      clearTimeout(fetchTimeout);
       const data = await response.json();
-      console.log('[SNS Post] 응답 데이터:', JSON.stringify(data, null, 2));
+      if (data.error) {
+        Alert.alert('오류', data.error);
+        return;
+      }
       setSnsPost(data);
-      // 생성 완료 후 해당 섹션으로 자동 스크롤
       setTimeout(() => {
         postSectionRef.current?.measureLayout(
           scrollViewRef.current,
@@ -48,8 +72,11 @@ export default function CookingJournalScreen() {
         );
       }, 100);
     } catch (err) {
-      Alert.alert('오류', 'SNS 게시글 생성에 실패했습니다.');
-      console.error(err);
+      if (err.name === 'AbortError') {
+        Alert.alert('시간 초과', 'AI 응답이 지연되고 있어요. 잠시 후 다시 시도해주세요.');
+      } else {
+        Alert.alert('오류', err.message);
+      }
     } finally {
       setGenerating(false);
     }
@@ -160,9 +187,32 @@ export default function CookingJournalScreen() {
 
               {/* 블로그 */}
               {activePostTab === 'blog' && (
-                <View style={styles.postBox}>
-                  <Text style={styles.blogTitle}>{snsPost.blog_title}</Text>
-                  <Text style={styles.postContent}>{snsPost.blog_content}</Text>
+                <View>
+                  <View style={styles.postBox}>
+                    <Text style={styles.blogTitle}>{snsPost.blog_title}</Text>
+                  </View>
+                  {/* 본문 단락 사이에 사진 끼워넣기 */}
+                  {(() => {
+                    const parts = splitIntoParts(snsPost.blog_content, photos.length + 1);
+                    return parts.map((part, idx) => (
+                      <View key={idx}>
+                        <View style={styles.postBox}>
+                          <Text style={styles.postContent}>{part}</Text>
+                        </View>
+                        {photos[idx] && (
+                          <View style={styles.inlinePhotoCard}>
+                            <View style={styles.photoStepBadge}>
+                              <Text style={styles.photoStepText}>STEP {photos[idx].step_number}</Text>
+                            </View>
+                            <Image source={{ uri: photos[idx].photo_url }} style={styles.inlinePhoto} />
+                            {photos[idx].caption && (
+                              <Text style={styles.photoCaption}>{photos[idx].caption}</Text>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    ));
+                  })()}
                 </View>
               )}
 
@@ -193,7 +243,7 @@ export default function CookingJournalScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 16, paddingBottom: 120 },
   header: { paddingVertical: 24, paddingHorizontal: 4 },
   headerLabel: {
     fontSize: 10,
@@ -283,6 +333,18 @@ const styles = StyleSheet.create({
   shareBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   regenerateBtn: { paddingVertical: 10, alignItems: 'center' },
   regenerateBtnText: { color: '#aaa', fontSize: 13 },
+  inlinePhotoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 8,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  inlinePhoto: { width: '100%', height: 200 },
   footer: {
     padding: 16,
     backgroundColor: '#fff',

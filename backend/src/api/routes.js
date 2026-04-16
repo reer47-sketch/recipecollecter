@@ -63,6 +63,11 @@ router.post('/generate-post', async (req, res) => {
       return res.status(500).json({ error: '게시글 생성 실패' });
     }
 
+    // 생성된 게시글 세션에 저장 (다음에 다시 열어도 유지)
+    await supabase.from('cooking_sessions')
+      .update({ sns_post: post })
+      .eq('id', sessionId);
+
     logger.info('SNS 게시글 생성 완료', { keys: Object.keys(post) });
     res.json(post);
   } catch (err) {
