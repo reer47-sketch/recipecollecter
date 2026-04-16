@@ -31,16 +31,25 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "plugins": [
       "expo-notifications",
       [
         "expo-camera",
-        { "cameraPermission": "요리 과정 촬영을 위해 카메라 접근이 필요합니다." }
+        {
+          "cameraPermission": "요리 과정 촬영을 위해 카메라 접근이 필요합니다."
+        }
       ]
     ],
-    "scheme": "recipecollecter"
+    "scheme": "recipecollecter",
+    "extra": {
+      "eas": {
+        "projectId": "b92eff18-276c-48c2-8243-f0547d2fe0eb"
+      }
+    }
   }
 }
