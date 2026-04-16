@@ -50,6 +50,7 @@ router.post('/generate-post', async (req, res) => {
       return res.status(500).json({ error: '게시글 생성 실패' });
     }
 
+    logger.info('SNS 게시글 생성 완료', { keys: Object.keys(post) });
     res.json(post);
   } catch (err) {
     logger.error('SNS 게시글 생성 API 오류', { error: err.message });
