@@ -23,13 +23,23 @@ router.post('/generate-post', async (req, res) => {
     return res.status(400).json({ error: 'sessionId, recipeId 필수' });
   }
 
+  // 90초 타임아웃 (Claude API 응답 대기)
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) {
+      logger.error('게시글 생성 타임아웃');
+      res.status(504).json({ error: '요청 시간이 초과됐습니다. 다시 시도해주세요.' });
+    }
+  }, 90000);
+
   try {
     // 세션 + 레시피 + 사진 조회
+    logger.info('Supabase 조회 시작');
     const [sessionRes, recipeRes, photosRes] = await Promise.all([
       supabase.from('cooking_sessions').select('*').eq('id', sessionId).single(),
       supabase.from('recipes').select('*').eq('id', recipeId).single(),
       supabase.from('session_photos').select('*').eq('session_id', sessionId).order('sort_order'),
     ]);
+    logger.info('Supabase 조회 완료');
 
     if (sessionRes.error || recipeRes.error) {
       logger.error('데이터 조회 실패', {
@@ -41,11 +51,13 @@ router.post('/generate-post', async (req, res) => {
       return res.status(404).json({ error: '데이터를 찾을 수 없습니다.' });
     }
 
+    logger.info('Claude AI 호출 시작');
     const post = await ai.generateSnsPost(
       recipeRes.data,
       sessionRes.data,
       photosRes.data || []
     );
+    logger.info('Claude AI 호출 완료');
 
     if (!post) {
       return res.status(500).json({ error: '게시글 생성 실패' });
@@ -55,7 +67,9 @@ router.post('/generate-post', async (req, res) => {
     res.json(post);
   } catch (err) {
     logger.error('SNS 게시글 생성 API 오류', { error: err.message });
-    res.status(500).json({ error: err.message });
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+  } finally {
+    clearTimeout(timeout);
   }
 });
 
