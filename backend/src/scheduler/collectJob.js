@@ -8,7 +8,7 @@ const naverScraper = require('../scrapers/naverBlog');
 const youtubeScraper = require('../scrapers/youtube');
 const ai = require('../ai/recipeProcessor');
 
-const MIN_SOURCES = parseInt(process.env.MIN_SOURCES_TO_AGGREGATE || '10');
+const MIN_SOURCES = parseInt(process.env.MIN_SOURCES_TO_AGGREGATE || '3');
 
 /**
  * 메인 수집 작업 실행
