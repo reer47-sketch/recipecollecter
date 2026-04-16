@@ -156,6 +156,17 @@ export const sessionApi = {
     return data;
   },
 
+  /** 저장된 게시글 전체 목록 조회 */
+  async getSavedPosts() {
+    const { data, error } = await supabase
+      .from('cooking_sessions')
+      .select('id, completed_at, sns_post, recipes(name)')
+      .not('sns_post', 'is', null)
+      .order('completed_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
   /** SNS 게시글 저장 */
   async saveSnsPost(sessionId, post) {
     const { error } = await supabase

@@ -19,6 +19,7 @@ export default function CookingJournalScreen() {
   const [isSaved, setIsSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activePostTab, setActivePostTab] = useState('instagram');
+  // tabs: instagram | blog | youtube
 
   const scrollViewRef = useRef(null);
   const postSectionRef = useRef(null);
@@ -107,7 +108,9 @@ export default function CookingJournalScreen() {
 
     const text = activePostTab === 'instagram'
       ? `${snsPost.instagram_caption}\n\n${snsPost.hashtags?.map(h => `#${h}`).join(' ')}`
-      : snsPost.blog_content;
+      : activePostTab === 'blog'
+        ? snsPost.blog_content
+        : snsPost.youtube_script || '';
 
     try {
       await Share.share({ message: text, title: snsPost.blog_title || recipe.name });
@@ -158,22 +161,17 @@ export default function CookingJournalScreen() {
             <View>
               {/* 탭 */}
               <View style={styles.postTabs}>
-                <TouchableOpacity
-                  style={[styles.postTab, activePostTab === 'instagram' && styles.postTabActive]}
-                  onPress={() => setActivePostTab('instagram')}
-                >
-                  <Text style={[styles.postTabText, activePostTab === 'instagram' && styles.postTabTextActive]}>
-                    Instagram
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.postTab, activePostTab === 'blog' && styles.postTabActive]}
-                  onPress={() => setActivePostTab('blog')}
-                >
-                  <Text style={[styles.postTabText, activePostTab === 'blog' && styles.postTabTextActive]}>
-                    Blog
-                  </Text>
-                </TouchableOpacity>
+                {['instagram', 'blog', 'youtube'].map(t => (
+                  <TouchableOpacity
+                    key={t}
+                    style={[styles.postTab, activePostTab === t && styles.postTabActive]}
+                    onPress={() => setActivePostTab(t)}
+                  >
+                    <Text style={[styles.postTabText, activePostTab === t && styles.postTabTextActive]}>
+                      {t === 'instagram' ? 'Instagram' : t === 'blog' ? 'Blog' : 'YouTube'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
 
               {/* 인스타 캡션 */}
@@ -193,6 +191,14 @@ export default function CookingJournalScreen() {
                 <View style={styles.postBox}>
                   <Text style={styles.blogTitle}>{snsPost.blog_title}</Text>
                   <Text style={styles.postContent}>{snsPost.blog_content}</Text>
+                </View>
+              )}
+
+              {/* 유튜브 스크립트 */}
+              {activePostTab === 'youtube' && (
+                <View style={styles.postBox}>
+                  <Text style={styles.scriptLabel}>SCRIPT</Text>
+                  <Text style={styles.postContent}>{snsPost.youtube_script}</Text>
                 </View>
               )}
 
@@ -316,6 +322,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   blogTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a1a', marginBottom: 10 },
+  scriptLabel: { fontSize: 9, fontWeight: '700', color: '#aaa', letterSpacing: 1.5, marginBottom: 10 },
   postContent: { fontSize: 14, color: '#444', lineHeight: 22 },
   hashtags: { fontSize: 13, color: '#555', marginTop: 10, lineHeight: 20, fontWeight: '500' },
   shareBtn: {

@@ -8,6 +8,7 @@ import RecipeDetailScreen from '../screens/RecipeDetailScreen';
 import IngredientCheckScreen from '../screens/IngredientCheckScreen';
 import CookingModeScreen from '../screens/CookingModeScreen';
 import CookingJournalScreen from '../screens/CookingJournalScreen';
+import SavedPostsScreen from '../screens/SavedPostsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,7 +27,17 @@ export default function AppNavigator() {
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: '트렌드 레시피 🍽️' }}
+          options={({ navigation }) => ({
+            title: '트렌드 레시피',
+            headerRight: () => (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('SavedPosts')}
+                style={{ paddingHorizontal: 4 }}
+              >
+                <Text style={{ fontSize: 13, color: '#1a1a1a', fontWeight: '600' }}>저장된 게시글</Text>
+              </TouchableOpacity>
+            ),
+          })}
         />
         <Stack.Screen
           name="RecipeDetail"
@@ -54,6 +65,11 @@ export default function AppNavigator() {
           name="CookingJournal"
           component={CookingJournalScreen}
           options={{ title: '요리 기록', headerBackTitle: '뒤로' }}
+        />
+        <Stack.Screen
+          name="SavedPosts"
+          component={SavedPostsScreen}
+          options={{ title: '저장된 게시글', headerBackTitle: '뒤로' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

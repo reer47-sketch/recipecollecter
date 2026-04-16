@@ -240,7 +240,7 @@ async function generateSnsPost(recipe, session, photos) {
 
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 4000,
+    max_tokens: 6000,
     system: [
       {
         type: 'text',
@@ -266,6 +266,7 @@ ${photoDescriptions || '없음'}
   "blog_content": "블로그 본문 (마크다운 형식, 2000자 내외)",
   "instagram_caption": "인스타그램 캡션 (이모지 포함, 300자 내외)",
   "hashtags": ["해시태그1", "해시태그2", ...],
+  "youtube_script": "유튜브 스크립트 (오프닝→재료소개→조리과정→완성&시식→아웃트로 구성, 말하는 톤으로 자연스럽게, 1500자 내외)",
   "summary": "한 줄 요약"
 }`,
       },
