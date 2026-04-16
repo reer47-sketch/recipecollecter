@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables (절대 커밋 금지)
+.env
+.env.local
+.env.*.local
+
+# Expo
+app/.expo/
+app/dist/
+app/web-build/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

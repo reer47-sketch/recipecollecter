@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "레시피 컬렉터",
+    "slug": "recipe-collector",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FF6B35"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.recipecollecter.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "요리 과정 촬영을 위해 카메라 접근이 필요합니다.",
+        "NSPhotoLibraryUsageDescription": "요리 기록 사진을 저장하기 위해 사진 라이브러리 접근이 필요합니다.",
+        "NSPhotoLibraryAddUsageDescription": "요리 기록 사진을 저장합니다."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FF6B35"
+      },
+      "package": "com.recipecollecter.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-camera",
+        { "cameraPermission": "요리 과정 촬영을 위해 카메라 접근이 필요합니다." }
+      ]
+    ],
+    "scheme": "recipecollecter"
+  }
+}
