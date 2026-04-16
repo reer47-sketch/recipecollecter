@@ -151,9 +151,6 @@ router.post('/add-recipe', async (req, res) => {
         trend_score: 0,
         source_count: sources.length,
         tags: aggregated.tags || [],
-        total_time_minutes: aggregated.total_time_minutes,
-        servings: aggregated.servings,
-        difficulty: aggregated.difficulty,
         sources: sources.slice(0, 10).map(s => ({ url: s.url, title: s.title, platform: s.platform })),
       })
       .select()
