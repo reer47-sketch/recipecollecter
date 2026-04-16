@@ -212,7 +212,7 @@ router.post('/add-recipe', async (req, res) => {
  * Vercel Cron이 매일 호출하는 레시피 수집 엔드포인트
  * Authorization: Bearer <CRON_SECRET> 헤더로 보호
  */
-router.post('/collect', async (req, res) => {
+router.get('/collect', async (req, res) => {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
     const auth = req.headers['authorization'];
