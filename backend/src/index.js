@@ -1,16 +1,11 @@
-require('dotenv').config();
+/**
+ * Railway / 로컬 서버 진입점
+ * - Vercel에서는 사용하지 않음 (backend/api/index.js 사용)
+ */
 const cron = require('node-cron');
-const express = require('express');
 const logger = require('./db/logger');
+const app = require('./app');
 const { runCollectionJob } = require('./scheduler/collectJob');
-const apiRoutes = require('./api/routes');
-
-const app = express();
-app.use(express.json());
-app.use('/api', apiRoutes);
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => logger.info(`[Server] API 서버 실행 중: http://localhost:${PORT}`));
 
 // ── 환경변수 검증 ─────────────────────────────────────────────
 const REQUIRED_ENV = [
@@ -26,6 +21,9 @@ for (const key of REQUIRED_ENV) {
     process.exit(1);
   }
 }
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => logger.info(`[Server] API 서버 실행 중: http://localhost:${PORT}`));
 
 // ── 크론 스케줄: 매일 오전 09:00 ────────────────────────────
 const CRON_SCHEDULE = process.env.COLLECT_CRON || '0 9 * * *';

@@ -94,6 +94,30 @@ router.post('/substitutes', async (req, res) => {
 });
 
 /**
+ * POST /api/collect
+ * Vercel Cron이 매일 호출하는 레시피 수집 엔드포인트
+ * Authorization: Bearer <CRON_SECRET> 헤더로 보호
+ */
+router.post('/collect', async (req, res) => {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const auth = req.headers['authorization'];
+    if (auth !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
+  logger.info('[Cron] 레시피 수집 트리거');
+  res.json({ ok: true, message: '수집 시작됨' });
+
+  // 응답 후 비동기로 실행
+  const { runCollectionJob } = require('../scheduler/collectJob');
+  runCollectionJob().catch(err =>
+    logger.error('[Cron] 수집 실패', { error: err.message })
+  );
+});
+
+/**
  * GET /api/health
  * 서버 상태 확인
  */
