@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Share, Alert,
+  ActivityIndicator, Share, Alert, Linking,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { sessionApi } from '../services/supabase';
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://recipecollecter-production.up.railway.app';
+const MOVIEMAKER_URL = 'https://moviemaker-phi.vercel.app';
 
 export default function CookingJournalScreen() {
   const navigation = useNavigation();
@@ -15,6 +16,7 @@ export default function CookingJournalScreen() {
 
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [makingVideo, setMakingVideo] = useState(false);
   const [snsPost, setSnsPost] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -101,6 +103,28 @@ export default function CookingJournalScreen() {
         },
       },
     ]);
+  };
+
+  const makeVideo = async () => {
+    if (!snsPost?.youtube_script) return;
+    setMakingVideo(true);
+    try {
+      const res = await fetch(`${MOVIEMAKER_URL}/api/draft/from-recipe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          script: snsPost.youtube_script,
+          title: recipe.name,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) { Alert.alert('오류', data.error); return; }
+      await Linking.openURL(data.url);
+    } catch (err) {
+      Alert.alert('오류', '영상 만들기 준비에 실패했습니다.');
+    } finally {
+      setMakingVideo(false);
+    }
   };
 
   const sharePost = async () => {
@@ -196,9 +220,25 @@ export default function CookingJournalScreen() {
 
               {/* 유튜브 스크립트 */}
               {activePostTab === 'youtube' && (
-                <View style={styles.postBox}>
-                  <Text style={styles.scriptLabel}>SCRIPT</Text>
-                  <Text style={styles.postContent}>{snsPost.youtube_script}</Text>
+                <View>
+                  <View style={styles.postBox}>
+                    <Text style={styles.scriptLabel}>SCRIPT</Text>
+                    <Text style={styles.postContent}>{snsPost.youtube_script}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.makeVideoBtn}
+                    onPress={makeVideo}
+                    disabled={makingVideo}
+                  >
+                    {makingVideo ? (
+                      <View style={styles.makeVideoBtnInner}>
+                        <ActivityIndicator color="#fff" size="small" />
+                        <Text style={styles.makeVideoBtnText}>영상 준비 중...</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.makeVideoBtnText}>MovieMaker로 영상 만들기</Text>
+                    )}
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -323,6 +363,15 @@ const styles = StyleSheet.create({
   },
   blogTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a1a', marginBottom: 10 },
   scriptLabel: { fontSize: 9, fontWeight: '700', color: '#aaa', letterSpacing: 1.5, marginBottom: 10 },
+  makeVideoBtn: {
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  makeVideoBtnInner: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  makeVideoBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   postContent: { fontSize: 14, color: '#444', lineHeight: 22 },
   hashtags: { fontSize: 13, color: '#555', marginTop: 10, lineHeight: 20, fontWeight: '500' },
   shareBtn: {
