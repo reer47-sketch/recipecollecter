@@ -240,7 +240,7 @@ async function generateSnsPost(recipe, session, photos) {
 
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 2000,
+    max_tokens: 4000,
     system: [
       {
         type: 'text',
