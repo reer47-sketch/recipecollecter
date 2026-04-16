@@ -6,11 +6,21 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://vucsslstkvgfjclahyzl.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_3LFgX2Z6cN-N-KHP2weWgg_lS8QkwPR",
+        "EXPO_PUBLIC_BACKEND_URL": "https://recipecollecter.vercel.app"
       }
     },
     "production": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://vucsslstkvgfjclahyzl.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_3LFgX2Z6cN-N-KHP2weWgg_lS8QkwPR",
+        "EXPO_PUBLIC_BACKEND_URL": "https://recipecollecter.vercel.app"
       }
     }
   }
