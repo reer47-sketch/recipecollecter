@@ -238,6 +238,14 @@ async function generateSnsPost(recipe, session, photos) {
     .map(p => `단계 ${p.step_number}: ${p.caption || ''}`)
     .join('\n');
 
+  const ingredientsList = (recipe.ingredients || [])
+    .map(i => `- ${i.name} ${i.amount}${i.unit}${i.is_optional ? ' (선택)' : ''}`)
+    .join('\n');
+
+  const stepsList = (recipe.timeline_steps || [])
+    .map(s => `${s.step_number}. [${s.duration_minutes || 0}분] ${s.title}: ${s.description}${s.tip ? ` (팁: ${s.tip})` : ''}`)
+    .join('\n');
+
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 6000,
@@ -252,18 +260,26 @@ async function generateSnsPost(recipe, session, photos) {
       {
         role: 'user',
         content: `다음 요리 기록을 바탕으로 블로그/SNS 게시글을 작성해주세요.
+아래에 제공된 실제 레시피 재료와 조리 단계를 그대로 반영해서 작성하세요. 다른 내용을 임의로 추가하거나 변경하지 마세요.
 
 레시피: ${recipe.name}
 요리 시작: ${session.started_at}
 완성 시각: ${session.completed_at || '진행 중'}
 개인 메모: ${session.notes || '없음'}
+
+=== 재료 목록 ===
+${ingredientsList || '없음'}
+
+=== 조리 단계 ===
+${stepsList || '없음'}
+
 촬영된 사진 단계:
 ${photoDescriptions || '없음'}
 
 다음 형식으로 응답:
 {
   "blog_title": "블로그 제목",
-  "blog_content": "블로그 본문 (마크다운 형식, 2000자 내외)",
+  "blog_content": "블로그 본문 (마크다운 형식, 2000자 내외, 위의 재료와 단계를 상세히 포함)",
   "instagram_caption": "인스타그램 캡션 (이모지 포함, 300자 내외)",
   "hashtags": ["해시태그1", "해시태그2", ...],
   "youtube_script": "유튜브 스크립트 (오프닝→재료소개→조리과정→완성&시식→아웃트로 구성, 말하는 톤으로 자연스럽게, 1500자 내외)",

@@ -34,12 +34,13 @@ router.post('/generate-post', async (req, res) => {
   }, 90000);
 
   try {
-    // 세션 + 레시피 + 사진 조회
+    // 세션 + 레시피 + 재료 + 단계 조회
     logger.info('Supabase 조회 시작');
-    const [sessionRes, recipeRes, photosRes] = await Promise.all([
+    const [sessionRes, recipeRes, ingredientsRes, stepsRes] = await Promise.all([
       supabase.from('cooking_sessions').select('*').eq('id', sessionId).single(),
       supabase.from('recipes').select('*').eq('id', recipeId).single(),
-      supabase.from('session_photos').select('*').eq('session_id', sessionId).order('sort_order'),
+      supabase.from('ingredients').select('*').eq('recipe_id', recipeId).order('sort_order'),
+      supabase.from('timeline_steps').select('*').eq('recipe_id', recipeId).order('sort_order'),
     ]);
     logger.info('Supabase 조회 완료');
 
@@ -53,11 +54,18 @@ router.post('/generate-post', async (req, res) => {
       return res.status(404).json({ error: '데이터를 찾을 수 없습니다.' });
     }
 
+    // 레시피에 재료 + 단계 포함
+    const fullRecipe = {
+      ...recipeRes.data,
+      ingredients: ingredientsRes.data || [],
+      timeline_steps: stepsRes.data || [],
+    };
+
     logger.info('Claude AI 호출 시작');
     const post = await ai.generateSnsPost(
-      recipeRes.data,
+      fullRecipe,
       sessionRes.data,
-      photosRes.data || []
+      []
     );
     logger.info('Claude AI 호출 완료');
 
