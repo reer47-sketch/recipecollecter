@@ -234,13 +234,16 @@ JSON 형식으로 응답:
 async function generateSnsPost(recipe, session, photos) {
   logger.info(`[AI] "${recipe.name}" SNS 게시글 생성 중...`);
 
-  const photoDescriptions = photos
-    .map(p => `단계 ${p.step_number}: ${p.caption || ''}`)
-    .join('\n');
+  // ingredients가 문자열로 저장된 경우 파싱
+  let ingredients = recipe.ingredients || [];
+  if (typeof ingredients === 'string') {
+    try { ingredients = JSON.parse(ingredients); } catch { ingredients = []; }
+  }
+  const ingredientNames = ingredients.slice(0, 5).map(i => i.name).filter(Boolean).join(', ') || '없음';
 
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 1500,
+    max_tokens: 3000,
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -251,14 +254,14 @@ async function generateSnsPost(recipe, session, photos) {
 유행 이유: ${recipe.reason || '없음'}
 난이도: ${recipe.difficulty || '보통'}
 소요 시간: ${recipe.total_time_minutes || 0}분
-주요 재료: ${(recipe.ingredients || []).slice(0, 5).map(i => i.name).join(', ') || '없음'}
+주요 재료: ${ingredientNames}
 메모: ${session.notes || '없음'}
 
-JSON 형식으로만 응답:
+아래 JSON 형식으로만 응답하세요. blog_content는 반드시 400자 이상 500자 이하로 작성하세요:
 {
   "blog_title": "제목",
-  "blog_content": "본문 (500자 내외, 레시피 특징 포함)",
-  "instagram_caption": "인스타 캡션 (150자 내외, 이모지 포함)",
+  "blog_content": "본문 (400~500자, 레시피 특징·재료·조리 포인트 포함)",
+  "instagram_caption": "인스타 캡션 (100~150자, 이모지 포함)",
   "hashtags": ["태그1", "태그2", "태그3", "태그4", "태그5"],
   "summary": "한 줄 요약"
 }`,
