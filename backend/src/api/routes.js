@@ -17,6 +17,7 @@ const logger = require('../db/logger');
  */
 router.post('/generate-post', async (req, res) => {
   const { sessionId, recipeId } = req.body;
+  logger.info('게시글 생성 요청 수신', { sessionId, recipeId });
 
   if (!sessionId || !recipeId) {
     return res.status(400).json({ error: 'sessionId, recipeId 필수' });
