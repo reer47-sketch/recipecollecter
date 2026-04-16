@@ -6,18 +6,6 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { sessionApi } from '../services/supabase';
 
-// 블로그 본문을 N개 청크로 균등 분할
-function splitIntoParts(text, n) {
-  if (!text || n <= 1) return [text];
-  const sentences = text.split(/(?<=[.!?。\n])\s+/);
-  const chunkSize = Math.ceil(sentences.length / n);
-  const parts = [];
-  for (let i = 0; i < n; i++) {
-    parts.push(sentences.slice(i * chunkSize, (i + 1) * chunkSize).join(' '));
-  }
-  return parts.filter(Boolean);
-}
-
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://recipecollecter-production.up.railway.app';
 
 export default function CookingJournalScreen() {
@@ -187,32 +175,9 @@ export default function CookingJournalScreen() {
 
               {/* 블로그 */}
               {activePostTab === 'blog' && (
-                <View>
-                  <View style={styles.postBox}>
-                    <Text style={styles.blogTitle}>{snsPost.blog_title}</Text>
-                  </View>
-                  {/* 본문 단락 사이에 사진 끼워넣기 */}
-                  {(() => {
-                    const parts = splitIntoParts(snsPost.blog_content, photos.length + 1);
-                    return parts.map((part, idx) => (
-                      <View key={idx}>
-                        <View style={styles.postBox}>
-                          <Text style={styles.postContent}>{part}</Text>
-                        </View>
-                        {photos[idx] && (
-                          <View style={styles.inlinePhotoCard}>
-                            <View style={styles.photoStepBadge}>
-                              <Text style={styles.photoStepText}>STEP {photos[idx].step_number}</Text>
-                            </View>
-                            <Image source={{ uri: photos[idx].photo_url }} style={styles.inlinePhoto} />
-                            {photos[idx].caption && (
-                              <Text style={styles.photoCaption}>{photos[idx].caption}</Text>
-                            )}
-                          </View>
-                        )}
-                      </View>
-                    ));
-                  })()}
+                <View style={styles.postBox}>
+                  <Text style={styles.blogTitle}>{snsPost.blog_title}</Text>
+                  <Text style={styles.postContent}>{snsPost.blog_content}</Text>
                 </View>
               )}
 
@@ -333,18 +298,6 @@ const styles = StyleSheet.create({
   shareBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   regenerateBtn: { paddingVertical: 10, alignItems: 'center' },
   regenerateBtnText: { color: '#aaa', fontSize: 13 },
-  inlinePhotoCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 8,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  inlinePhoto: { width: '100%', height: 200 },
   footer: {
     padding: 16,
     backgroundColor: '#fff',
