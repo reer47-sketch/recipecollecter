@@ -1,5 +1,15 @@
 const winston = require('winston');
 
+const transports = [new winston.transports.Console()];
+
+// 로컬 개발 환경에서만 파일 로그 저장
+if (process.env.NODE_ENV !== 'production') {
+  const fs = require('fs');
+  if (!fs.existsSync('logs')) fs.mkdirSync('logs');
+  transports.push(new winston.transports.File({ filename: 'logs/error.log', level: 'error' }));
+  transports.push(new winston.transports.File({ filename: 'logs/combined.log' }));
+}
+
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   format: winston.format.combine(
@@ -10,11 +20,7 @@ const logger = winston.createLogger({
       return `[${timestamp}] ${level}: ${message}${metaStr}`;
     })
   ),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' })
-  ]
+  transports,
 });
 
 module.exports = logger;
