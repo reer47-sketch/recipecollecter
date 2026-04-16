@@ -221,14 +221,16 @@ router.get('/collect', async (req, res) => {
     }
   }
 
-  logger.info('[Cron] 레시피 수집 트리거');
-  res.json({ ok: true, message: '수집 시작됨' });
-
-  // 응답 후 비동기로 실행
-  const { runCollectionJob } = require('../scheduler/collectJob');
-  runCollectionJob().catch(err =>
-    logger.error('[Cron] 수집 실패', { error: err.message })
-  );
+  logger.info('[Cron] 레시피 수집 시작');
+  try {
+    const { runCollectionJob } = require('../scheduler/collectJob');
+    await runCollectionJob();
+    logger.info('[Cron] 수집 완료');
+    res.json({ ok: true, message: '수집 완료' });
+  } catch (err) {
+    logger.error('[Cron] 수집 실패', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /**
