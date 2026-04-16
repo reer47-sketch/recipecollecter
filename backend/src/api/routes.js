@@ -31,6 +31,12 @@ router.post('/generate-post', async (req, res) => {
     ]);
 
     if (sessionRes.error || recipeRes.error) {
+      logger.error('데이터 조회 실패', {
+        sessionId,
+        recipeId,
+        sessionError: sessionRes.error?.message,
+        recipeError: recipeRes.error?.message,
+      });
       return res.status(404).json({ error: '데이터를 찾을 수 없습니다.' });
     }
 
