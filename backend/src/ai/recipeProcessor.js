@@ -240,32 +240,22 @@ async function generateSnsPost(recipe, session, photos) {
 
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 4000,
-    system: [
-      {
-        type: 'text',
-        text: SYSTEM_PROMPT,
-        cache_control: { type: 'ephemeral' },
-      },
-    ],
+    max_tokens: 1500,
+    system: SYSTEM_PROMPT,
     messages: [
       {
         role: 'user',
-        content: `다음 요리 기록을 바탕으로 블로그/SNS 게시글을 작성해주세요.
+        content: `다음 요리 기록을 SNS 게시글로 작성해주세요.
 
 레시피: ${recipe.name}
-요리 시작: ${session.started_at}
-완성 시각: ${session.completed_at || '진행 중'}
-개인 메모: ${session.notes || '없음'}
-촬영된 사진 단계:
-${photoDescriptions}
+메모: ${session.notes || '없음'}
 
-다음 형식으로 응답:
+JSON 형식으로만 응답:
 {
-  "blog_title": "블로그 제목",
-  "blog_content": "블로그 본문 (마크다운 형식, 2000자 내외)",
-  "instagram_caption": "인스타그램 캡션 (이모지 포함, 300자 내외)",
-  "hashtags": ["해시태그1", "해시태그2", ...],
+  "blog_title": "제목",
+  "blog_content": "본문 (500자 내외)",
+  "instagram_caption": "인스타 캡션 (150자 내외, 이모지 포함)",
+  "hashtags": ["태그1", "태그2", "태그3"],
   "summary": "한 줄 요약"
 }`,
       },
