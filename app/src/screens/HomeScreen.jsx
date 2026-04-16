@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, RefreshControl, Image,
-  SafeAreaView,
+  SafeAreaView, Modal, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { recipeApi } from '../services/supabase';
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://recipecollecter.vercel.app';
 
 const TAGS = ['전체', '한식', '양식', '중식', '일식', '디저트', '음료', '간식', '홈카페', '다이어트'];
 
@@ -18,6 +20,9 @@ export default function HomeScreen() {
   const [selectedTag, setSelectedTag] = useState('전체');
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [addRecipeName, setAddRecipeName] = useState('');
+  const [adding, setAdding] = useState(false);
 
   const loadRecipes = useCallback(async (reset = false) => {
     try {
@@ -48,6 +53,42 @@ export default function HomeScreen() {
       console.error('검색 실패:', err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddRecipe = async () => {
+    const name = addRecipeName.trim();
+    if (!name) return;
+    setAdding(true);
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 115000);
+      const res = await fetch(`${BACKEND_URL}/api/add-recipe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipeName: name }),
+        signal: controller.signal,
+      });
+      clearTimeout(t);
+      const data = await res.json();
+      if (data.error) { Alert.alert('오류', data.error); return; }
+      setAddModalVisible(false);
+      setAddRecipeName('');
+      if (data.already_exists) {
+        Alert.alert('이미 있어요', `"${name}" 레시피가 이미 추가되어 있어요.`);
+      } else {
+        Alert.alert('추가 완료!', `"${data.name}" 레시피가 추가됐어요.`, [
+          { text: '확인', onPress: () => loadRecipes(true) },
+        ]);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        Alert.alert('시간 초과', '처리가 오래 걸리고 있어요. 잠시 후 다시 시도해주세요.');
+      } else {
+        Alert.alert('오류', err.message);
+      }
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -83,6 +124,49 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* 레시피 직접 추가 모달 */}
+      <Modal
+        visible={addModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !adding && setAddModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>레시피 직접 추가</Text>
+            <Text style={styles.modalSub}>원하는 요리 이름을 입력하면{'\n'}AI가 레시피를 찾아서 추가해드려요</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="예: 된장찌개, 파스타, 마라탕..."
+              placeholderTextColor="#bbb"
+              value={addRecipeName}
+              onChangeText={setAddRecipeName}
+              editable={!adding}
+              returnKeyType="done"
+              onSubmitEditing={handleAddRecipe}
+              autoFocus
+            />
+            {adding ? (
+              <View style={styles.addingBox}>
+                <ActivityIndicator color="#1a1a1a" size="small" />
+                <Text style={styles.addingText}>레시피 검색 및 생성 중... (1분 정도 소요)</Text>
+              </View>
+            ) : (
+              <View style={styles.modalBtns}>
+                <TouchableOpacity style={styles.modalCancelBtn} onPress={() => { setAddModalVisible(false); setAddRecipeName(''); }}>
+                  <Text style={styles.modalCancelText}>취소</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalAddBtn} onPress={handleAddRecipe}>
+                  <Text style={styles.modalAddText}>추가</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
       {/* 검색 바 */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputWrap}>
@@ -156,6 +240,14 @@ export default function HomeScreen() {
           }
         />
       )}
+      {/* 직접 추가 FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setAddModalVisible(true)}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.fabText}>+ 레시피 추가</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -246,6 +338,66 @@ const styles = StyleSheet.create({
   cardReason: { fontSize: 13, color: '#777', lineHeight: 19, marginBottom: 10 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tagText: { fontSize: 11, color: '#aaa' },
+
+  // FAB
+  fab: {
+    position: 'absolute',
+    bottom: 28,
+    right: 20,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 24,
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  fabText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  // 모달
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalBox: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 6 },
+  modalSub: { fontSize: 13, color: '#888', lineHeight: 20, marginBottom: 20 },
+  modalInput: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#1a1a1a',
+    marginBottom: 20,
+  },
+  modalBtns: { flexDirection: 'row', gap: 10 },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  modalCancelText: { fontSize: 15, color: '#666', fontWeight: '600' },
+  modalAddBtn: {
+    flex: 2,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+  },
+  modalAddText: { fontSize: 15, color: '#fff', fontWeight: '700' },
+  addingBox: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  addingText: { fontSize: 13, color: '#666', flex: 1 },
 
   // 기타
   loader: { marginTop: 80 },

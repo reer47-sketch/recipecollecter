@@ -7,6 +7,8 @@ const router = express.Router();
 const supabase = require('../db/supabase');
 const ai = require('../ai/recipeProcessor');
 const logger = require('../db/logger');
+const { searchNaverBlog } = require('../scrapers/naverBlog');
+const { searchYouTube } = require('../scrapers/youtube');
 
 // Express 설치 필요 시 package.json에 추가
 // "express": "^4.21.0"
@@ -90,6 +92,113 @@ router.post('/substitutes', async (req, res) => {
   } catch (err) {
     logger.error('대체 재료 추천 API 오류', { error: err.message });
     res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/add-recipe
+ * 사용자가 원하는 레시피를 직접 검색해서 추가
+ */
+router.post('/add-recipe', async (req, res) => {
+  const { recipeName } = req.body;
+  if (!recipeName?.trim()) {
+    return res.status(400).json({ error: '레시피 이름을 입력해주세요.' });
+  }
+
+  const name = recipeName.trim();
+  logger.info(`[AddRecipe] "${name}" 추가 요청`);
+
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) res.status(504).json({ error: '처리 시간이 초과됐습니다. 다시 시도해주세요.' });
+  }, 120000);
+
+  try {
+    // 1) 이미 있는 레시피인지 확인
+    const { data: existing } = await supabase
+      .from('recipes')
+      .select('id')
+      .ilike('name', name)
+      .eq('is_active', true)
+      .single();
+
+    if (existing) {
+      clearTimeout(timeout);
+      return res.json({ id: existing.id, already_exists: true });
+    }
+
+    // 2) Naver + YouTube 검색
+    logger.info(`[AddRecipe] "${name}" 검색 중...`);
+    const [naverResults, youtubeResults] = await Promise.all([
+      searchNaverBlog(`${name} 레시피`, 30).catch(() => []),
+      searchYouTube(`${name} 만들기`, 10).catch(() => []),
+    ]);
+    const sources = [...naverResults, ...youtubeResults];
+    logger.info(`[AddRecipe] 소스 ${sources.length}개 수집 완료`);
+
+    // 3) Claude로 레시피 통합
+    const aggregated = await ai.aggregateRecipe(name, sources);
+    if (!aggregated) {
+      clearTimeout(timeout);
+      return res.status(500).json({ error: '레시피를 찾을 수 없습니다. 다른 이름으로 시도해보세요.' });
+    }
+
+    // 4) DB 저장
+    const { data: recipe, error: recipeErr } = await supabase
+      .from('recipes')
+      .insert({
+        name: aggregated.name,
+        reason: aggregated.reason,
+        trend_score: 0,
+        source_count: sources.length,
+        tags: aggregated.tags || [],
+        total_time_minutes: aggregated.total_time_minutes,
+        servings: aggregated.servings,
+        difficulty: aggregated.difficulty,
+        sources: sources.slice(0, 10).map(s => ({ url: s.url, title: s.title, platform: s.platform })),
+      })
+      .select()
+      .single();
+
+    if (recipeErr) throw recipeErr;
+
+    if (aggregated.ingredients?.length) {
+      await supabase.from('ingredients').insert(
+        aggregated.ingredients.map((ing, idx) => ({
+          recipe_id: recipe.id,
+          name: ing.name,
+          amount: ing.amount || '',
+          unit: ing.unit || '',
+          is_optional: ing.is_optional || false,
+          sort_order: idx,
+          substitutes: ing.substitutes || [],
+        }))
+      );
+    }
+
+    if (aggregated.timeline_steps?.length) {
+      await supabase.from('timeline_steps').insert(
+        aggregated.timeline_steps.map((step, idx) => ({
+          recipe_id: recipe.id,
+          step_number: step.step_number || idx + 1,
+          title: step.title,
+          description: step.description,
+          duration_minutes: step.duration_minutes || 0,
+          timer_required: step.timer_required || false,
+          is_photo_moment: step.is_photo_moment || false,
+          tip: step.tip || null,
+          sort_order: idx,
+        }))
+      );
+    }
+
+    logger.info(`[AddRecipe] "${aggregated.name}" 저장 완료 (id: ${recipe.id})`);
+    clearTimeout(timeout);
+    res.json({ id: recipe.id, name: aggregated.name, already_exists: false });
+
+  } catch (err) {
+    logger.error('[AddRecipe] 실패', { error: err.message });
+    clearTimeout(timeout);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
   }
 });
 
